@@ -127,7 +127,7 @@ with st.sidebar:
 
     c0, c1 = st.columns(2)
     with c0:
-        st.metric("Chat cost (USD)", f"${total_cost:.5f}")
+        st.metric("Chat cost (USD)", f"${total_cost:.4f}")
 
     with c1:
-        st.metric("Chat cost (PLN)", f"{total_cost * USD_TO_PLN:.5f}")
+        st.metric("Chat cost (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
