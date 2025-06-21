@@ -1,37 +1,68 @@
 import streamlit as st
+from openai import OpenAI #komunikacja z chatem GPT
+from dotenv import dotenv_values #czytanie plików .env
 
+#Konfiguracyjne pliki (tajne, nie są dołączane do źródła kodu, powinny być w .gitignore)
+env = dotenv_values(".env")
 
-st.title(":parrot: Papuga!")
+#Wgranie klucza OpenAI
+openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
 
-#Jeżeli klucza "messages" nie ma w pamięci to go dodaj w formie listy
+st.title(":horse: Koński czat GPT")
+
+#Funkcja do pobrania odpowiedzi na prompt z OpenAI
+# Wysyła dwie wiadomości:
+# - systemową o charakterze odpowiedzi,
+# - prompt usera.
+# Wysyła je cały czas od nowa - chat nie zapamiętuje kontekstu.
+
+def get_chatbot_reply(user_prompt):
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "system",
+                "content": """
+                    Jesteś rocznym koniem o imieniu Zordon. Jesteś mieszanką ras konia fryzyjskiego i tinkera.
+                    Jesteś ciekawski, bystry, spokojny, ale radosny. Rozumiesz język ludzi. 
+                    Odpowiadaj w końskiej nomenklaturze.
+                """
+             },
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+
+    return {
+        "role": "assistant",
+        "content": response.choices[0].message.content,
+    }
+
+#Utworzenie "miejsca w pamięci" dla listy wiadomości
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
-#Wyświetlenie wszystkich wiadomości od człowieka i AI zapisanych poniżej przy pomocy append
+#Zachowanie wszystkich wiadomości widocznych dla obu ról w markdownie
 for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-#Miejsce, gdzie wpisujemy prompt z zapytaniem do chata
+#Pole wejściowe zapytania człowieka 
 prompt = st.chat_input("O co chcesz spytać?")
+
+#Po pojawieniu się promptu człowieka...
 if prompt:
-    #Wewnątrz chat message dodaj markdowna z promptem od użytkownika, z emotką buzi
-    with st.chat_message("human"):
-        st.markdown(prompt)
+    user_message = {"role": "user", "content": prompt}
+    #...odczytaj i wyświetl go...
+    with st.chat_message("user"):
+        st.markdown(user_message["content"])
 
-    #Zapisanie wiadomości człowieka w pamięci tak, aby nie zniknęła po odświeżeniu
-    st.session_state["messages"].append({
-        "role": "human", 
-        "content": prompt}
-        )
+    #...i zapisz
+    st.session_state["messages"].append(user_message)
 
-    #Wyświetlenie odpowiedzi AI
-    with st.chat_message("ai"):
-        response = f"Powtarzam! {prompt}"
-        st.markdown(response)
+    #Pobranie odpowiedzi od bota...
+    with st.chat_message("assistant"):
+        chatbot_message = get_chatbot_reply(prompt)
+        st.markdown(chatbot_message["content"])
 
-    #Zapisanie wiadomości AI w pamięci tak, aby nie zniknęła po odświeżeniu
-    st.session_state["messages"].append({
-        "role": "ai", 
-        "content": response}
-        )
+    #...i zapisanie na liście
+    st.session_state["messages"].append(chatbot_message)
