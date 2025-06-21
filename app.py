@@ -15,7 +15,7 @@ model_pricings = {
 }
 
 MODEL = "gpt-4o"
-USD_TO_PLN = 3.97
+USD_TO_PLN = 50
 PRICING = model_pricings[MODEL]
 
 #Konfiguracyjne pliki (tajne, nie są dołączane do źródła kodu, powinny być w .gitignore)
@@ -80,6 +80,7 @@ def get_chatbot_reply(user_prompt, memory):
     return {
         "role": "assistant",
         "content": response.choices[0].message.content,
+        "usage": usage,
     }
 
 #Utworzenie "miejsca w pamięci" dla listy wiadomości
