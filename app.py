@@ -2,6 +2,22 @@ import streamlit as st
 from openai import OpenAI #komunikacja z chatem GPT
 from dotenv import dotenv_values #czytanie plików .env
 
+#Słownik słowników o cenach
+model_pricings = {
+    "gpt-4o": {
+        "input_tokens": 5.00 / 1_000_000,  # per token + rozdzielanie zer _
+        "output_tokens": 15.00 / 1_000_000,  # per token
+    },
+    "gpt-4o-mini": {
+        "input_tokens": 0.150 / 1_000_000,  # per token
+        "output_tokens": 0.600 / 1_000_000,  # per token
+    }
+}
+
+MODEL = "gpt-4o"
+USD_TO_PLN = 3.97
+PRICING = model_pricings[MODEL]
+
 #Konfiguracyjne pliki (tajne, nie są dołączane do źródła kodu, powinny być w .gitignore)
 env = dotenv_values(".env")
 
@@ -22,9 +38,9 @@ def get_chatbot_reply(user_prompt, memory):
         {
             "role": "system",
             "content": """
-                Jesteś rocznym koniem o imieniu Zordon. Jesteś mieszanką ras konia fryzyjskiego i tinkera.
-                Jesteś ciekawski, bystry, spokojny, ale radosny. Rozumiesz język ludzi. 
-                Odpowiadaj w końskiej nomenklaturze.
+                You are a yearling horse named Zordon. You are a mix of breeds of Friesian horse and tinker.
+                You are inquisitive, smart, calm but cheerful. You understand the language of people. 
+                Respond in horse nomenclature.
             """
         },
     ]
@@ -43,9 +59,22 @@ def get_chatbot_reply(user_prompt, memory):
 
     #Poproś o odpowiedź i użyj modelu gpt-4o
     response = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model=MODEL,
         messages=messages
     )
+    #Informacja o tym, ile tokenów (~sylab) generuje ta wiadomość
+    usage = {}
+    if response.usage:
+        #Słownik usage z tokenami
+        usage = {
+            #WE i WY inaczej wyceniane
+            #wejście
+            "completion_tokens": response.usage.completion_tokens,
+            #wyjście
+            "prompt_tokens": response.usage.prompt_tokens,
+            #razem
+            "total_tokens": response.usage.total_tokens,
+        }
 
     #Odpowiedź zwrotna
     return {
@@ -63,7 +92,7 @@ for message in st.session_state["messages"]:
         st.markdown(message["content"])
 
 #Pole wejściowe zapytania człowieka 
-prompt = st.chat_input("O co chcesz spytać?")
+prompt = st.chat_input("Ask me anything")
 
 #Po pojawieniu się promptu człowieka...
 if prompt:
@@ -88,5 +117,17 @@ if prompt:
 
 #Pasek boczny historii rozmowy
 with st.sidebar:
-    with st.expander("Historia rozmowy"):
-        st.json(st.session_state.get("messages") or [])
+    st.write("Current model", MODEL)
+
+    total_cost = 0
+    for message in st.session_state["messages"]:
+        if "usage" in message:
+            total_cost += message["usage"]["prompt_tokens"] * PRICING["input_tokens"]
+            total_cost += message["usage"]["completion_tokens"] * PRICING["output_tokens"]
+
+    c0, c1 = st.columns(2)
+    with c0:
+        st.metric("Chat cost (USD)", f"${total_cost:.5f}")
+
+    with c1:
+        st.metric("Chat cost (PLN)", f"{total_cost * USD_TO_PLN:.5f}")
