@@ -1,6 +1,7 @@
 import streamlit as st
 from openai import OpenAI #komunikacja z chatem GPT
 from dotenv import dotenv_values #czytanie plików .env
+import json
 
 #Słownik słowników o cenach
 model_pricings = {
@@ -111,6 +112,13 @@ if prompt:
 
     #...i zapisanie na liście
     st.session_state["messages"].append(chatbot_message)
+
+    #Zapis wiadomości w pliku
+    with open("current_conversation.json", "w") as f:
+        f.write(json.dumps({
+            "chatbot_personality": st.session_state["chatbot_personality"],
+            "messages": st.session_state["messages"],
+        }))
 
 #Pasek boczny historii rozmowy
 with st.sidebar:
