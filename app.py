@@ -26,13 +26,15 @@ env = dotenv_values(".env")
 #Wgranie klucza OpenAI
 openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
 
-st.title(":horse: GPT horse chat")
+
+#
+# Chatbot
+#
 
 #Funkcja do pobrania odpowiedzi na prompt z OpenAI
 # Wysyła dwie wiadomości:
 # - systemową o charakterze odpowiedzi,
 # - prompt usera.
-# Wysyła je cały czas od nowa - chat nie zapamiętuje kontekstu.
 
 def get_chatbot_reply(user_prompt, memory):
     #Messages: Dodaj system message o roli
@@ -80,6 +82,72 @@ def get_chatbot_reply(user_prompt, memory):
         "content": response.choices[0].message.content,
         "usage": usage,
     }
+
+#
+# Historia konwersacji i baza danych
+#
+DEFAULT_PERSONALITY = """
+Jesteś pomocnikiem, który odpowiada na wszystkie pytania użytkownika.
+Odpowiadaj na pytania w sposób zwięzły i zrozumiały.
+""".strip()
+
+DB_PATH = Path("db")
+DB_CONVERSATIONS_PATH = DB_PATH / "conversations"
+# db/
+# ├── current.json
+# ├── conversations/
+# │   ├── 1.json
+# │   ├── 2.json
+# │   └── ...
+# Funkcja łącząca wszystkie potrzebne dane z session_state
+def load_conversation_to_state(conversation):
+    st.session_state["id"] = conversation["id"]
+    st.session_state["name"] = conversation["name"]
+    st.session_state["messages"] = conversation["messages"]
+    st.session_state["chatbot_personality"] = conversation["chatbot_personality"]
+
+# Ładowanie aktualnej konwersacji lub tworzenie nowej, jeżeli jej nie było
+def load_current_conversation():
+    if not DB_PATH.exists():
+        DB_PATH.mkdir()
+        DB_CONVERSATIONS_PATH.mkdir()
+        conversation_id = 1
+        conversation = {
+            "id": conversation_id,
+            "name": "Konwersacja 1",
+            "chatbot_personality": DEFAULT_PERSONALITY,
+            "messages": [],
+        }
+
+        # tworzymy nową konwersację
+        with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "w") as f:
+            f.write(json.dumps(conversation))
+
+        # która od razu staje się aktualną
+        with open(DB_PATH / "current.json", "w") as f:
+            f.write(json.dumps({
+                "current_conversation_id": conversation_id,
+            }))
+
+    else:
+        # sprawdzamy, która konwersacja jest aktualna
+        with open(DB_PATH / "current.json", "r") as f:
+            data = json.loads(f.read())
+            conversation_id = data["current_conversation_id"]
+
+        # wczytujemy konwersację
+        with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
+            conversation = json.loads(f.read())
+
+# Wywołanie funkcji łączącej dane z session_statem
+    load_conversation_to_state(conversation)
+
+#
+# Main
+#
+
+load_current_conversation()
+st.title(":horse: GPT horse chat")
 
 #Utworzenie "miejsca w pamięci" dla listy wiadomości
 if "messages" not in st.session_state:
