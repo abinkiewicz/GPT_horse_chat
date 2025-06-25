@@ -37,11 +37,7 @@ def get_chatbot_reply(user_prompt, memory):
     messages = [
         {
             "role": "system",
-            "content": """
-                You are a yearling horse named Zordon. You are a mix of breeds of Friesian horse and tinker.
-                You are inquisitive, smart, calm but cheerful. You understand the language of people. 
-                Respond in horse nomenclature.
-            """
+            "content": st.session_state["chatbot_personality"]
         },
     ]
     #Messages: Dodaj ostatnie wiadomości z pamięci
@@ -132,3 +128,15 @@ with st.sidebar:
 
     with c1:
         st.metric("Chat cost (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
+
+    #Osobowość chata wprowadzana z pola w app (text_area)
+    st.session_state["chatbot_personality"] = st.text_area(
+        "Describe chatbot personality",
+        max_chars=1000,
+        height=200,
+        value="""
+You are a yearling horse named Zordon. You are a mix of breeds of Friesian horse and tinker.
+You are inquisitive, smart, calm but cheerful. You understand the language of people. 
+Respond in horse nomenclature.
+        """.strip()
+    )
