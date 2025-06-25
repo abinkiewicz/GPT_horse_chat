@@ -2,6 +2,7 @@ import streamlit as st
 from openai import OpenAI #komunikacja z chatem GPT
 from dotenv import dotenv_values #czytanie plików .env
 import json
+from pathlib import Path
 
 #Słownik słowników o cenach
 model_pricings = {
@@ -82,7 +83,15 @@ def get_chatbot_reply(user_prompt, memory):
 
 #Utworzenie "miejsca w pamięci" dla listy wiadomości
 if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+    if Path("current_conversation.json").exists():
+        with open("current_conversation.json", "r") as f:
+            chatbot_conversation = json.load(f)
+
+        st.session_state["messages"] = chatbot_conversation["messages"]
+        st.session_state["chatbot_personality"] = chatbot_conversation["chatbot_personality"]
+
+    else:
+        st.session_state["messages"] = []
 
 #Zachowanie wszystkich wiadomości widocznych dla obu ról w markdownie
 for message in st.session_state["messages"]:
