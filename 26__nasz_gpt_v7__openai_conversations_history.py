@@ -1,13 +1,13 @@
-import streamlit as st
-from openai import OpenAI #komunikacja z chatem GPT
-from dotenv import dotenv_values #czytanie plików .env
 import json
 from pathlib import Path
+import streamlit as st
+from openai import OpenAI
+from dotenv import dotenv_values
 
-#Słownik słowników o cenach
+
 model_pricings = {
     "gpt-4o": {
-        "input_tokens": 5.00 / 1_000_000,  # per token + rozdzielanie zer _
+        "input_tokens": 5.00 / 1_000_000,  # per token
         "output_tokens": 15.00 / 1_000_000,  # per token
     },
     "gpt-4o-mini": {
@@ -15,68 +15,44 @@ model_pricings = {
         "output_tokens": 0.600 / 1_000_000,  # per token
     }
 }
-
 MODEL = "gpt-4o"
-USD_TO_PLN = 50
+USD_TO_PLN = 3.97
 PRICING = model_pricings[MODEL]
 
-#Konfiguracyjne pliki (tajne, nie są dołączane do źródła kodu, powinny być w .gitignore)
 env = dotenv_values(".env")
 
-#Wgranie klucza OpenAI
 openai_client = OpenAI(api_key=env["OPENAI_API_KEY"])
 
-
 #
-# Chatbot
+# CHATBOT
 #
-
-#Funkcja do pobrania odpowiedzi na prompt z OpenAI
-# Wysyła dwie wiadomości:
-# - systemową o charakterze odpowiedzi,
-# - prompt usera.
-
-def get_chatbot_reply(user_prompt, memory):
-    #Messages: Dodaj system message o roli
+def chatbot_reply(user_prompt, memory):
+    # dodaj system message
     messages = [
         {
             "role": "system",
-            "content": st.session_state["chatbot_personality"]
+            "content": st.session_state["chatbot_personality"],
         },
     ]
-    #Messages: Dodaj ostatnie wiadomości z pamięci
+    # dodaj wszystkie wiadomości z pamięci
     for message in memory:
-        messages.append(
-            {"role": message["role"], 
-             "content": message["content"]}
-             )
+        messages.append({"role": message["role"], "content": message["content"]})
 
-    #Messages: Prześlij najnowszą wiadomość użytkownika
-    messages.append(
-        {"role": "user", 
-         "content": user_prompt}
-         )
+    # dodaj wiadomość użytkownika
+    messages.append({"role": "user", "content": user_prompt})
 
-    #Poproś o odpowiedź i użyj modelu gpt-4o
     response = openai_client.chat.completions.create(
         model=MODEL,
         messages=messages
     )
-    #Informacja o tym, ile tokenów (~sylab) generuje ta wiadomość
     usage = {}
     if response.usage:
-        #Słownik usage z tokenami
         usage = {
-            #WE i WY inaczej wyceniane
-            #wejście
             "completion_tokens": response.usage.completion_tokens,
-            #wyjście
             "prompt_tokens": response.usage.prompt_tokens,
-            #razem
             "total_tokens": response.usage.total_tokens,
         }
 
-    #Odpowiedź zwrotna
     return {
         "role": "assistant",
         "content": response.choices[0].message.content,
@@ -84,12 +60,11 @@ def get_chatbot_reply(user_prompt, memory):
     }
 
 #
-# Historia konwersacji i baza danych
+# CONVERSATION HISTORY AND DATABASE
 #
 DEFAULT_PERSONALITY = """
-You are a yearling horse named Zordon. You are a mix of breeds of Friesian horse and tinker.
-You are inquisitive, smart, calm but cheerful. You understand the language of people. 
-Respond in horse nomenclature.
+Jesteś pomocnikiem, który odpowiada na wszystkie pytania użytkownika.
+Odpowiadaj na pytania w sposób zwięzły i zrozumiały.
 """.strip()
 
 DB_PATH = Path("db")
@@ -100,14 +75,13 @@ DB_CONVERSATIONS_PATH = DB_PATH / "conversations"
 # │   ├── 1.json
 # │   ├── 2.json
 # │   └── ...
-# Funkcja łącząca wszystkie potrzebne dane z session_state
 def load_conversation_to_state(conversation):
     st.session_state["id"] = conversation["id"]
     st.session_state["name"] = conversation["name"]
     st.session_state["messages"] = conversation["messages"]
     st.session_state["chatbot_personality"] = conversation["chatbot_personality"]
 
-# Ładowanie aktualnej konwersacji lub tworzenie nowej, jeżeli jej nie było
+
 def load_current_conversation():
     if not DB_PATH.exists():
         DB_PATH.mkdir()
@@ -140,8 +114,8 @@ def load_current_conversation():
         with open(DB_CONVERSATIONS_PATH / f"{conversation_id}.json", "r") as f:
             conversation = json.loads(f.read())
 
-# Wywołanie funkcji łączącej dane z session_statem
     load_conversation_to_state(conversation)
+
 
 def save_current_conversation_messages():
     conversation_id = st.session_state["id"]
@@ -244,73 +218,46 @@ def list_conversations():
 
     return conversations
 
-#
-# Main
-#
 
+#
+# MAIN PROGRAM
+#
 load_current_conversation()
-st.title(":horse: GPT horse chat")
 
-#Utworzenie "miejsca w pamięci" dla listy wiadomości
-if "messages" not in st.session_state:
-    if Path("current_conversation.json").exists():
-        with open("current_conversation.json", "r") as f:
-            chatbot_conversation = json.load(f)
+st.title(":classical_building: NaszGPT")
 
-        st.session_state["messages"] = chatbot_conversation["messages"]
-        st.session_state["chatbot_personality"] = chatbot_conversation["chatbot_personality"]
-
-    else:
-        st.session_state["messages"] = []
-
-#Zachowanie wszystkich wiadomości widocznych dla obu ról w markdownie
 for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-#Pole wejściowe zapytania człowieka 
-prompt = st.chat_input("Ask me anything")
-
-#Po pojawieniu się promptu człowieka...
+prompt = st.chat_input("O co chcesz spytać?")
 if prompt:
-    user_message = {"role": "user", "content": prompt}
-    #...odczytaj i wyświetl go...
     with st.chat_message("user"):
-        st.markdown(user_message["content"])
+        st.markdown(prompt)
 
-    #...i zapisz
-    st.session_state["messages"].append(user_message)
+    st.session_state["messages"].append({"role": "user", "content": prompt})
 
-    #Pobranie odpowiedzi od bota...
     with st.chat_message("assistant"):
-        chatbot_message = get_chatbot_reply(
-            prompt,
-            memory=st.session_state['messages'][-10:] #Pobranie 10 najnowszych wiadomości
-            )
-        st.markdown(chatbot_message["content"])
+        response = chatbot_reply(prompt, memory=st.session_state["messages"][-10:])
+        st.markdown(response["content"])
 
-    #...i zapisanie na liście
-    st.session_state["messages"].append(chatbot_message)
-
-    #Zapis wiadomości w pliku
+    st.session_state["messages"].append({"role": "assistant", "content": response["content"], "usage": response["usage"]})
     save_current_conversation_messages()
 
-#Pasek boczny historii rozmowy
 with st.sidebar:
-    st.write("Current model", MODEL)
-
+    st.subheader("Aktualna konwersacja")
     total_cost = 0
-    for message in st.session_state["messages"]:
+    for message in st.session_state.get("messages") or []:
         if "usage" in message:
             total_cost += message["usage"]["prompt_tokens"] * PRICING["input_tokens"]
             total_cost += message["usage"]["completion_tokens"] * PRICING["output_tokens"]
 
     c0, c1 = st.columns(2)
     with c0:
-        st.metric("Chat cost (USD)", f"${total_cost:.4f}")
+        st.metric("Koszt rozmowy (USD)", f"${total_cost:.4f}")
 
     with c1:
-        st.metric("Chat cost (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
+        st.metric("Koszt rozmowy (PLN)", f"{total_cost * USD_TO_PLN:.4f}")
 
     st.session_state["name"] = st.text_input(
         "Nazwa konwersacji",
