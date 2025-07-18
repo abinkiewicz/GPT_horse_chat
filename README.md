@@ -1,2 +1,30 @@
+# 🐎 Equestrian Me
 
-![ChatGPT Image 28 cze 2025, 10_33_12](https://github.com/user-attachments/assets/d397322a-8d08-4ed0-992c-8240bd2e996c)
+An interactive web application featuring a personalized GPT chat assistant tailored for horse enthusiasts. The app uses OpenAI API to provide helpful, context-aware conversations about equestrian topics, training tips, and horse care.
+
+---
+
+## 📷 Logo
+
+<p align="center">
+  <img src="equestrianme.png" width="300" height="450">
+</p>
+
+---
+
+## 🛠 Technologies and tools
+
+- Python 🐍  
+- Streamlit  
+- OpenAI API  
+- Pandas (for data handling)  
+
+---
+
+## 🚀 Skills demonstrated in this project
+
+- integration with OpenAI API for conversational AI  
+- building personalized chatbot experiences  
+- handling user input and managing conversation context  
+- developing interactive web apps with Streamlit  
+- managing and processing data for improved responses  
